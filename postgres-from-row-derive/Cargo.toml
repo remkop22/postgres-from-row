@@ -1,5 +1,6 @@
 [package]
 name = "postgres-from-row-derive"
+description = "Internal proc-macro crate for postgres-from-row"
 version.workspace = true
 authors.workspace = true 
 edition.workspace = true
