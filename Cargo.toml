@@ -25,6 +25,9 @@ license-file = "LICENSE"
 keywords = ["postgres", "postgres-tokio", "postgresql", "from-row", "mapper"]
 categories = ["database", "parsing", "data-structures"]
 
+[workspace.dependencies]
+postgres-from-row-derive = { path = "postgres-from-row-derive", version = "=0.1.0" }
+
 [features]
 default = ["postgres"]
 postgres = ["dep:postgres"]
@@ -33,4 +36,4 @@ tokio-postgres = ["dep:tokio-postgres"]
 [dependencies]
 tokio-postgres = { version = "0.7.7", default_features = false, optional = true }
 postgres = { version = "0.19.4", default_features = false, optional = true }
-postgres-from-row-derive = { path = "postgres-from-row-derive" }
+postgres-from-row-derive.workspace = true
