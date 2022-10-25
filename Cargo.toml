@@ -1,7 +1,7 @@
 [package]
 name = "postgres-from-row"
 version = "0.1.0"
-authors = ["Remo Pas"]
+authors = ["Remo Pas <remo.pas22@gmail.com>"]
 edition = "2021"
 description = "Derivable trait that allows converting a postgres row to a struct"
 documentation = "https://docs.rs/postgres-from-row"
