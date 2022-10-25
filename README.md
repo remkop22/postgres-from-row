@@ -1,6 +1,6 @@
 # postgres-from-row
 
-Derive [`FromRow`] to generate a mapping between a struct and postgres rows.
+Derive `FromRow` to generate a mapping between a struct and postgres rows.
 
 This crate works with [postgres](<https://docs.rs/postgres>) by default.
 
@@ -38,9 +38,9 @@ let todo = Todo::try_from_row(&row);
 assert!(todo.is_err());
 ```
 
-Each field need's to implement [`postgres::types::FromSql`], as this will be used to convert a
+Each field need's to implement `postgres::types::FromSql`, as this will be used to convert a
 single column to the specified type. If you want to override this behavior and delegate it to a
-nested structure that also implements [`FromRow`], use `#[from_row(flatten)]`:
+nested structure that also implements `FromRow`, use `#[from_row(flatten)]`:
 
 ```rust
 use postgres_from_row::FromRow;
