@@ -1,7 +1,15 @@
 [package]
 name = "postgres-from-row-derive"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+authors.workspace = true 
+edition.workspace = true
+repository.workspace = true 
+homepage.workspace = true 
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true 
+
+
 
 [lib]
 proc-macro = true

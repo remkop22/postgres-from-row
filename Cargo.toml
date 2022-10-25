@@ -1,19 +1,29 @@
 [package]
 name = "postgres-from-row"
-version = "0.1.0"
-authors = ["Remo Pas <remo.pas22@gmail.com>"]
-edition = "2021"
 description = "Derivable trait that allows converting a postgres row to a struct"
 documentation = "https://docs.rs/postgres-from-row"
-repository = "https://github.com/remkop22/postgres-from-row"
-homepage = "https://github.com/remkop22/postgres-from-row"
 readme = "README.md"
-license-file = "LICENSE"
-keywords = ["postgres", "postgres-tokio", "postgresql", "from-row", "mapper"]
-categories = ["database", "parsing", "data-structures"]
+version.workspace = true
+authors.workspace = true 
+edition.workspace = true
+repository.workspace = true 
+homepage.workspace = true 
+license-file.workspace = true
+keywords.workspace = true
+categories.workspace = true 
 
 [workspace]
 members = ["postgres-from-row-derive"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Remo Pas <remo.pas22@gmail.com>"]
+edition = "2021"
+repository = "https://github.com/remkop22/postgres-from-row"
+homepage = "https://github.com/remkop22/postgres-from-row"
+license-file = "LICENSE"
+keywords = ["postgres", "postgres-tokio", "postgresql", "from-row", "mapper"]
+categories = ["database", "parsing", "data-structures"]
 
 [features]
 default = ["postgres"]
