@@ -21,7 +21,7 @@
 //! #[derive(FromRow)]
 //! struct Todo {
 //!     todo_id: i32,
-//!     text: String
+//!     text: String,
 //!     author_id: i32,
 //! }
 //!
@@ -91,8 +91,7 @@ pub trait FromRow: Sized {
     fn try_from_row(row: &active_postgres::Row) -> Result<Self, active_postgres::Error>;
 }
 
-#[doc(no_inline)]
-/// gfdsfd
+#[doc(hidden)]
 pub use active_postgres::FromRow;
 
 //

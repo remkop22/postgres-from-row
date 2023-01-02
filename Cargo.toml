@@ -12,6 +12,9 @@ license-file.workspace = true
 keywords.workspace = true
 categories.workspace = true 
 
+[lib]
+doctest = false
+
 [workspace]
 members = ["postgres-from-row-derive"]
 
