@@ -1,4 +1,3 @@
-
 use darling::ast::{self, Style};
 use darling::{FromDeriveInput, FromField};
 use proc_macro::TokenStream;
@@ -56,8 +55,8 @@ impl DeriveFromRow {
             Style::Struct => fields.fields,
         };
 
-        let from_row_fields = fields.iter().map(FromRowField::generate_from_row);
-        let try_from_row_fields = fields.iter().map(FromRowField::generate_try_from_row);
+        let from_row_fields = fields.iter().map(|f| f.generate_from_row(&module));
+        let try_from_row_fields = fields.iter().map(|f| f.generate_try_from_row(&module));
 
         Ok(quote! {
             impl #impl_generics postgres_from_row::FromRow for #ident #ty_generics #where_clause {
@@ -68,7 +67,7 @@ impl DeriveFromRow {
                     }
                 }
 
-                fn try_from_row(row: &#module::Row) -> Result<Self, #module::Error> {
+                fn try_from_row(row: &#module::Row) -> std::result::Result<Self, #module::Error> {
                     Ok(Self {
                         #(#try_from_row_fields),*
                     })
@@ -89,7 +88,7 @@ struct FromRowField {
 }
 
 impl FromRowField {
-    fn generate_from_row(&self) -> proc_macro2::TokenStream {
+    fn generate_from_row(&self, module: &Ident) -> proc_macro2::TokenStream {
         let ident = self.ident.as_ref().unwrap();
         let str_ident = ident.to_string();
         let ty = &self.ty;
@@ -100,11 +99,12 @@ impl FromRowField {
             }
         } else {
             quote! {
-                #ident: row.get::<&str, #ty>(#str_ident)
+                #ident: #module::Row::get::<&str, #ty>(row, #str_ident)
             }
         }
     }
-    fn generate_try_from_row(&self) -> proc_macro2::TokenStream {
+
+    fn generate_try_from_row(&self, module: &Ident) -> proc_macro2::TokenStream {
         let ident = self.ident.as_ref().unwrap();
         let str_ident = ident.to_string();
         let ty = &self.ty;
@@ -115,7 +115,7 @@ impl FromRowField {
             }
         } else {
             quote! {
-                #ident: row.try_get::<&str, #ty>(#str_ident)?
+                #ident: #module::Row::try_get::<&str, #ty>(row, #str_ident)?
             }
         }
     }
