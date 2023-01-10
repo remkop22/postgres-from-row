@@ -28,7 +28,11 @@ fn try_derive_from_row(input: &DeriveInput, module: Ident) -> Result<TokenStream
 }
 
 #[derive(Debug, FromDeriveInput)]
-#[darling(attributes(from_row), forward_attrs(allow, doc, cfg))]
+#[darling(
+    attributes(from_row),
+    forward_attrs(allow, doc, cfg),
+    supports(struct_named)
+)]
 struct DeriveFromRow {
     ident: syn::Ident,
     generics: syn::Generics,
@@ -38,6 +42,7 @@ struct DeriveFromRow {
 impl DeriveFromRow {
     fn generate(self, module: Ident) -> Result<TokenStream, darling::Error> {
         let ident = &self.ident;
+
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
 
         let fields = self
@@ -57,9 +62,20 @@ impl DeriveFromRow {
 
         let from_row_fields = fields.iter().map(|f| f.generate_from_row(&module));
         let try_from_row_fields = fields.iter().map(|f| f.generate_try_from_row(&module));
+        let original_predicates = where_clause.clone().map(|w| &w.predicates).into_iter();
+        let mut predicates = Vec::new();
+
+        for field in fields.iter() {
+            let ty = &field.ty;
+            predicates.push(if field.flatten {
+                quote! (#ty: postgres_from_row::FromRow)
+            } else {
+                quote! (#ty: for<'a> #module::types::FromSql<'a>)
+            });
+        }
 
         Ok(quote! {
-            impl #impl_generics postgres_from_row::FromRow for #ident #ty_generics #where_clause {
+            impl #impl_generics postgres_from_row::FromRow for #ident #ty_generics where #(#original_predicates),* #(#predicates),* {
 
                 fn from_row(row: &#module::Row) -> Self {
                     Self {
