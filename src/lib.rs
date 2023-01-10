@@ -5,14 +5,14 @@
 //!
 //! ```toml
 //! [dependencies]
-//! postgres_from_row = "0.1.0"
+//! postgres_from_row = "0.3.0"
 //! ```
 //!
 //! If you want to use it with [tokio-postgres](<https://docs.rs/tokio-postgres>), enable it like so:
 //!
 //! ```toml
 //! [dependencies]
-//! postgres_from_row = { version = "0.1.0", default_features = false, features = ["tokio-postgres"] }
+//! postgres_from_row = { version = "0.3.0", default_features = false, features = ["tokio-postgres"] }
 //! ```
 //! # Examples
 //! ```rust
