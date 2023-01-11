@@ -1,5 +1,5 @@
-use postgres::Row;
 use postgres_from_row::FromRow;
+use tokio_postgres::Row;
 
 #[derive(FromRow)]
 #[allow(dead_code)]
