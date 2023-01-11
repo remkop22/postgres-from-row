@@ -2,19 +2,13 @@
 
 Derive `FromRow` to generate a mapping between a struct and postgres rows.
 
-This crate works with [postgres](<https://docs.rs/postgres>) by default.
+This crate is compatible with both [postgres](<https://docs.rs/postgres>) and [tokio-postgres](<https://docs.rs/tokio-postgres>).
 
 ```toml
 [dependencies]
-postgres_from_row = "0.4.0"
+postgres_from_row = "0.5.0"
 ```
 
-If you want to use it with [tokio-postgres](<https://docs.rs/tokio-postgres>), enable it like so:
-
-```toml
-[dependencies]
-postgres_from_row = { version = "0.4.0", default_features = false, features = ["tokio-postgres"] }
-```
 ## Examples
 ```rust
 use postgres_from_row::FromRow;
