@@ -2,34 +2,22 @@ use darling::{ast::Data, Error, FromDeriveInput, FromField, ToTokens};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use quote::quote;
-use syn::{parse_macro_input, DeriveInput, Ident, Result};
-
-#[proc_macro_derive(FromRowTokioPostgres, attributes(from_row))]
-pub fn derive_from_row_tokio_postgres(input: TokenStream) -> TokenStream {
-    derive_from_row(input, quote::format_ident!("tokio_postgres"))
-}
-
-#[proc_macro_derive(FromRowPostgres, attributes(from_row))]
-pub fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
-    derive_from_row(input, quote::format_ident!("postgres"))
-}
+use syn::{parse_macro_input, DeriveInput, Result};
 
 /// Calls the fallible entry point and writes any errors to the tokenstream.
-fn derive_from_row(input: TokenStream, module: Ident) -> TokenStream {
+#[proc_macro_derive(FromRow, attributes(from_row))]
+pub fn derive_from_row(input: TokenStream) -> TokenStream {
     let derive_input = parse_macro_input!(input as DeriveInput);
-    match try_derive_from_row(&derive_input, module) {
+    match try_derive_from_row(&derive_input) {
         Ok(result) => result,
         Err(err) => err.write_errors().into(),
     }
 }
 
 /// Fallible entry point for generating a `FromRow` implementation
-fn try_derive_from_row(
-    input: &DeriveInput,
-    module: Ident,
-) -> std::result::Result<TokenStream, Error> {
+fn try_derive_from_row(input: &DeriveInput) -> std::result::Result<TokenStream, Error> {
     let from_row_derive = DeriveFromRow::from_derive_input(input)?;
-    Ok(from_row_derive.generate(module)?)
+    Ok(from_row_derive.generate()?)
 }
 
 /// Main struct for deriving `FromRow` for a struct.
@@ -56,11 +44,11 @@ impl DeriveFromRow {
     }
 
     /// Generates any additional where clause predicates needed for the fields in this struct.
-    fn predicates(&self, module: &Ident) -> Result<Vec<TokenStream2>> {
+    fn predicates(&self) -> Result<Vec<TokenStream2>> {
         let mut predicates = Vec::new();
 
         for field in self.fields() {
-            field.add_predicates(&module, &mut predicates)?;
+            field.add_predicates(&mut predicates)?;
         }
 
         Ok(predicates)
@@ -75,37 +63,37 @@ impl DeriveFromRow {
     }
 
     /// Generate the `FromRow` implementation.
-    fn generate(self, module: Ident) -> Result<TokenStream> {
+    fn generate(self) -> Result<TokenStream> {
         self.validate()?;
 
         let ident = &self.ident;
 
         let (impl_generics, ty_generics, where_clause) = self.generics.split_for_impl();
         let original_predicates = where_clause.clone().map(|w| &w.predicates).into_iter();
-        let predicates = self.predicates(&module)?;
+        let predicates = self.predicates()?;
 
         let from_row_fields = self
             .fields()
             .iter()
-            .map(|f| f.generate_from_row(&module))
+            .map(|f| f.generate_from_row())
             .collect::<syn::Result<Vec<_>>>()?;
 
         let try_from_row_fields = self
             .fields()
             .iter()
-            .map(|f| f.generate_try_from_row(&module))
+            .map(|f| f.generate_try_from_row())
             .collect::<syn::Result<Vec<_>>>()?;
 
         Ok(quote! {
             impl #impl_generics postgres_from_row::FromRow for #ident #ty_generics where #(#original_predicates),* #(#predicates),* {
 
-                fn from_row(row: &#module::Row) -> Self {
+                fn from_row(row: &postgres_from_row::tokio_postgres::Row) -> Self {
                     Self {
                         #(#from_row_fields),*
                     }
                 }
 
-                fn try_from_row(row: &#module::Row) -> std::result::Result<Self, #module::Error> {
+                fn try_from_row(row: &postgres_from_row::tokio_postgres::Row) -> std::result::Result<Self, postgres_from_row::tokio_postgres::Error> {
                     Ok(Self {
                         #(#try_from_row_fields),*
                     })
@@ -187,14 +175,14 @@ impl FromRowField {
     /// and when using either `from` or `try_from` attributes it additionally pushes this bound:
     /// `T: std::convert::From<R>`, where `T` is the type specified in the struct and `R` is the
     /// type specified in the `[try]_from` attribute.
-    fn add_predicates(&self, module: &Ident, predicates: &mut Vec<TokenStream2>) -> Result<()> {
+    fn add_predicates(&self, predicates: &mut Vec<TokenStream2>) -> Result<()> {
         let target_ty = &self.target_ty()?;
         let ty = &self.ty;
 
         predicates.push(if self.flatten {
             quote! (#target_ty: postgres_from_row::FromRow)
         } else {
-            quote! (#target_ty: for<'a> #module::types::FromSql<'a>)
+            quote! (#target_ty: for<'a> postgres_from_row::tokio_postgres::types::FromSql<'a>)
         });
 
         if self.from.is_some() {
@@ -203,7 +191,7 @@ impl FromRowField {
             let try_from = quote!(std::convert::TryFrom<#target_ty>);
 
             predicates.push(quote!(#ty: #try_from));
-            predicates.push(quote!(#module::Error: std::convert::From<<#ty as #try_from>::Error>));
+            predicates.push(quote!(postgres_from_row::tokio_postgres::Error: std::convert::From<<#ty as #try_from>::Error>));
             predicates.push(quote!(<#ty as #try_from>::Error: std::fmt::Debug));
         }
 
@@ -211,7 +199,7 @@ impl FromRowField {
     }
 
     /// Generate the line needed to retrievee this field from a row when calling `from_row`.
-    fn generate_from_row(&self, module: &Ident) -> Result<TokenStream2> {
+    fn generate_from_row(&self) -> Result<TokenStream2> {
         let ident = self.ident.as_ref().unwrap();
         let column_name = self.column_name();
         let field_ty = &self.ty;
@@ -220,7 +208,7 @@ impl FromRowField {
         let mut base = if self.flatten {
             quote!(<#target_ty as postgres_from_row::FromRow>::from_row(row))
         } else {
-            quote!(#module::Row::get::<&str, #target_ty>(row, #column_name))
+            quote!(postgres_from_row::tokio_postgres::Row::get::<&str, #target_ty>(row, #column_name))
         };
 
         if self.from.is_some() {
@@ -233,7 +221,7 @@ impl FromRowField {
     }
 
     /// Generate the line needed to retrieve this field from a row when calling `try_from_row`.
-    fn generate_try_from_row(&self, module: &Ident) -> Result<TokenStream2> {
+    fn generate_try_from_row(&self) -> Result<TokenStream2> {
         let ident = self.ident.as_ref().unwrap();
         let column_name = self.column_name();
         let field_ty = &self.ty;
@@ -242,7 +230,7 @@ impl FromRowField {
         let mut base = if self.flatten {
             quote!(<#target_ty as postgres_from_row::FromRow>::try_from_row(row)?)
         } else {
-            quote!(#module::Row::try_get::<&str, #target_ty>(row, #column_name)?)
+            quote!(postgres_from_row::tokio_postgres::Row::try_get::<&str, #target_ty>(row, #column_name)?)
         };
 
         if self.from.is_some() {
