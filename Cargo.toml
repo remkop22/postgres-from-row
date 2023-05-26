@@ -32,6 +32,6 @@ categories = ["database", "parsing", "data-structures"]
 postgres-from-row-derive = { path = "postgres-from-row-derive", version = "=0.5.1" }
 
 [dependencies]
-tokio-postgres = { version = "0.7.7", default_features = false }
+tokio-postgres = { version = "0.7.8", default_features = false }
 postgres-from-row-derive.workspace = true
 
