@@ -19,7 +19,7 @@ doctest = false
 members = ["postgres-from-row-derive"]
 
 [workspace.package]
-version = "0.5.1"
+version = "0.5.2"
 authors = ["Remo Pas <remo.pas22@gmail.com>"]
 edition = "2021"
 repository = "https://github.com/remkop22/postgres-from-row"
@@ -29,7 +29,7 @@ keywords = ["postgres", "postgres-tokio", "postgresql", "from-row", "mapper"]
 categories = ["database", "parsing", "data-structures"]
 
 [workspace.dependencies]
-postgres-from-row-derive = { path = "postgres-from-row-derive", version = "=0.5.1" }
+postgres-from-row-derive = { path = "postgres-from-row-derive", version = "=0.5.2" }
 
 [dependencies]
 tokio-postgres = { version = "0.7.8", default_features = false }

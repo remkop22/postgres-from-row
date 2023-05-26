@@ -6,7 +6,7 @@ This crate is compatible with both [postgres](<https://docs.rs/postgres>) and [t
 
 ```toml
 [dependencies]
-postgres_from_row = "0.5.1"
+postgres_from_row = "0.5.2"
 ```
 
 ## Examples
