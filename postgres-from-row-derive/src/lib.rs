@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use darling::{ast::Data, Error, FromDeriveInput, FromField, ToTokens};
 use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
@@ -125,14 +127,37 @@ struct FromRowField {
     /// Override the name of the actual sql column instead of using `self.ident`.
     /// Is not compatible with `flatten` since no column is needed there.
     rename: Option<String>,
+    /// Optionally use this function to convert the value from the database into a struct field.
+    from_fn: Option<String>,
+    /// Optionally use this function to convert the value from the database into a struct field.
+    try_from_fn: Option<String>,
 }
 
 impl FromRowField {
     /// Checks wether this field has a valid combination of attributes
     fn validate(&self) -> Result<()> {
-        if self.from.is_some() && self.try_from.is_some() {
+        match (
+            &self.from,
+            &self.from_fn,
+            &self.try_from,
+            &self.try_from_fn,
+        ) {
+            (Some(_), None, None, None) => {}
+            (None, Some(_), None, None) => {}
+            (None, None, Some(_), None) => {}
+            (None, None, None, Some(_)) => {}
+            (None, None, None, None) => {}
+            _ => {
+                return Err(Error::custom(
+                    r#"can't use the `#[from_row(*from*)]` attributes together"#,
+                )
+                .into());
+            }
+        }
+
+        if self.flatten && (self.from.is_some() || self.try_from.is_some() || self.from_fn.is_some() || self.try_from_fn.is_some()) {
             return Err(Error::custom(
-                r#"can't combine `#[from_row(from = "..")]` with `#[from_row(try_from = "..")]`"#,
+                r#"can't combine `#[from_row(flatten)]` with one of the `#[from_row(*from*)]` attributes`"#,
             )
             .into());
         }
@@ -179,11 +204,13 @@ impl FromRowField {
         let target_ty = &self.target_ty()?;
         let ty = &self.ty;
 
-        predicates.push(if self.flatten {
-            quote! (#target_ty: postgres_from_row::FromRow)
-        } else {
-            quote! (#target_ty: for<'a> postgres_from_row::tokio_postgres::types::FromSql<'a>)
-        });
+        if self.try_from_fn.is_none() && self.from_fn.is_none() {
+            predicates.push(if self.flatten {
+                quote! (#target_ty: postgres_from_row::FromRow)
+            } else {
+                quote! (#target_ty: for<'a> postgres_from_row::tokio_postgres::types::FromSql<'a>)
+            });
+        }
 
         if self.from.is_some() {
             predicates.push(quote!(#ty: std::convert::From<#target_ty>))
@@ -203,7 +230,11 @@ impl FromRowField {
         let ident = self.ident.as_ref().unwrap();
         let column_name = self.column_name();
         let field_ty = &self.ty;
-        let target_ty = self.target_ty()?;
+        let target_ty = if self.from_fn.is_none() && self.try_from_fn.is_none() {
+            self.target_ty()?
+        } else {
+            quote!(_)
+        };
 
         let mut base = if self.flatten {
             quote!(<#target_ty as postgres_from_row::FromRow>::from_row(row))
@@ -211,7 +242,13 @@ impl FromRowField {
             quote!(postgres_from_row::tokio_postgres::Row::get::<&str, #target_ty>(row, #column_name))
         };
 
-        if self.from.is_some() {
+        if let Some(from_fn) = &self.from_fn {
+            let from_fn = TokenStream2::from_str(&from_fn)?;
+            base = quote!(#from_fn(#base));
+        } else if let Some(try_from_fn) = &self.try_from_fn {
+            let try_from_fn = TokenStream2::from_str(&try_from_fn)?;
+            base = quote!(#try_from_fn(#base).expect("could not convert column"));
+        } else if self.from.is_some() {
             base = quote!(<#field_ty as std::convert::From<#target_ty>>::from(#base));
         } else if self.try_from.is_some() {
             base = quote!(<#field_ty as std::convert::TryFrom<#target_ty>>::try_from(#base).expect("could not convert column"));
@@ -225,7 +262,11 @@ impl FromRowField {
         let ident = self.ident.as_ref().unwrap();
         let column_name = self.column_name();
         let field_ty = &self.ty;
-        let target_ty = self.target_ty()?;
+        let target_ty = if self.from_fn.is_none() && self.try_from_fn.is_none() {
+            self.target_ty()?
+        } else {
+            quote!(_)
+        };
 
         let mut base = if self.flatten {
             quote!(<#target_ty as postgres_from_row::FromRow>::try_from_row(row)?)
@@ -233,7 +274,13 @@ impl FromRowField {
             quote!(postgres_from_row::tokio_postgres::Row::try_get::<&str, #target_ty>(row, #column_name)?)
         };
 
-        if self.from.is_some() {
+        if let Some(from_fn) = &self.from_fn {
+            let from_fn = TokenStream2::from_str(&from_fn)?;
+            base = quote!(#from_fn(#base));
+        } else if let Some(try_from_fn) = &self.try_from_fn {
+            let try_from_fn = TokenStream2::from_str(&try_from_fn)?;
+            base = quote!(#try_from_fn(#base)?);
+        } else if self.from.is_some() {
             base = quote!(<#field_ty as std::convert::From<#target_ty>>::from(#base));
         } else if self.try_from.is_some() {
             base = quote!(<#field_ty as std::convert::TryFrom<#target_ty>>::try_from(#base)?);
