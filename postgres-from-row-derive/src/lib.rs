@@ -170,11 +170,13 @@ impl FromRowField {
 
     /// Pushes the needed where clause predicates for this field.
     ///
-    /// By default this is `T: for<'a> postgres::types::FromSql<'a>`,
+    /// By default this is `T: for<'__from_row_lifetime> postgres::types::FromSql<'__from_row_lifetime>`,
     /// when using `flatten` it's: `T: postgres_from_row::FromRow`
     /// and when using either `from` or `try_from` attributes it additionally pushes this bound:
     /// `T: std::convert::From<R>`, where `T` is the type specified in the struct and `R` is the
     /// type specified in the `[try]_from` attribute.
+    ///
+    /// Note: '__from_row_lifetime is used here to avoid conflicts with common user-specified lifetimes like 'a
     fn add_predicates(&self, predicates: &mut Vec<TokenStream2>) -> Result<()> {
         let target_ty = &self.target_ty()?;
         let ty = &self.ty;
@@ -182,7 +184,7 @@ impl FromRowField {
         predicates.push(if self.flatten {
             quote! (#target_ty: postgres_from_row::FromRow)
         } else {
-            quote! (#target_ty: for<'a> postgres_from_row::tokio_postgres::types::FromSql<'a>)
+            quote! (#target_ty: for<'__from_row_lifetime> postgres_from_row::tokio_postgres::types::FromSql<'__from_row_lifetime>)
         });
 
         if self.from.is_some() {
