@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use postgres_from_row::FromRow;
-use tokio_postgres::Row;
+use tokio_postgres::{types::Json, Row};
 
 #[derive(FromRow)]
 #[allow(dead_code)]
@@ -8,6 +10,12 @@ pub struct Todo {
     text: String,
     #[from_row(flatten)]
     user: User,
+    #[from_row(from_fn = "json")]
+    json: HashMap<String, bool>,
+}
+
+fn json<T>(wrapper: Json<T>) -> T {
+    wrapper.0
 }
 
 #[derive(FromRow)]
